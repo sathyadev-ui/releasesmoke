@@ -1,0 +1,28 @@
+# A deliberately broken package, used to prove releasesmoke catches real bugs.
+#
+# The bug: `packages` is hardcoded and omits `brokenpkg.extra`. The source tree
+# looks complete, the build succeeds, and the test suite passes when run from
+# this directory. The wheel is missing a subpackage.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brokenpkg"
+version = "0.1.0"
+description = "Intentionally broken package for testing releasesmoke"
+requires-python = ">=3.11"
+
+[project.scripts]
+brokentool = "brokenpkg.cli:main"
+
+[tool.setuptools]
+packages = ["brokenpkg"]          # BUG: brokenpkg.extra is missing
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.releasesmoke]
+imports = ["brokenpkg", "brokenpkg.extra"]
+commands = ["brokentool --help"]
