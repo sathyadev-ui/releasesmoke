@@ -68,3 +68,22 @@ def test_missing_file_is_reported(broken_wheel: Path) -> None:
     results = run_checks(broken_wheel, files=["brokenpkg/templates/base.html"])
     assert len(results) == 1
     assert not results[0].ok
+
+
+def test_quoted_argument_is_one_argument(fixed_wheel: Path) -> None:
+    """A quoted value must reach the command as a single argument.
+
+    With a naive command.split() this fails: argparse receives '"two' and
+    'words"' as separate tokens and exits non-zero.
+    """
+    results = run_checks(fixed_wheel, commands=['brokentool --name "two words"'])
+    assert all(r.ok for r in results), [r for r in results if not r.ok]
+
+
+def test_unbalanced_quote_is_reported(fixed_wheel: Path) -> None:
+    results = run_checks(fixed_wheel, commands=['brokentool --name "unclosed'])
+    command_results = [r for r in results if r.check.startswith("command ")]
+
+    assert len(command_results) == 1
+    assert not command_results[0].ok
+    assert "could not parse" in command_results[0].detail
