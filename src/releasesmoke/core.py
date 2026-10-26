@@ -111,7 +111,7 @@ def run_checks(
     commands: list[str] | None = None,
     files: list[str] | None = None,
 ) -> list[Result]:
-    """Install \`wheel\` in a throwaway venv and run the configured checks."""
+    """Install `wheel` in a throwaway venv and run the configured checks."""
     imports = imports or []
     commands = commands or []
     files = files or []
