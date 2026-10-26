@@ -9,6 +9,7 @@ green CI run and only surface after upload.
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -64,7 +65,17 @@ def _check_commands(py: Path, env_dir: Path, cwd: Path, commands: list[str]) -> 
     results = []
     bin_dir = _venv_python(env_dir).parent
     for command in commands:
-        parts = command.split()
+        try:
+            # shlex.split honours quoting, so a command such as
+            #   mytool --name "two words"
+            # is passed as one argument rather than two.
+            parts = shlex.split(command)
+        except ValueError as exc:
+            results.append(Result(f"command {command}", False, f"could not parse: {exc}"))
+            continue
+        if not parts:
+            results.append(Result(f"command {command}", False, "empty command"))
+            continue
         exe = bin_dir / parts[0]
         if sys.platform == "win32" and not exe.exists():
             exe = exe.with_suffix(".exe")
@@ -100,7 +111,7 @@ def run_checks(
     commands: list[str] | None = None,
     files: list[str] | None = None,
 ) -> list[Result]:
-    """Install `wheel` in a throwaway venv and run the configured checks."""
+    """Install \`wheel\` in a throwaway venv and run the configured checks."""
     imports = imports or []
     commands = commands or []
     files = files or []
