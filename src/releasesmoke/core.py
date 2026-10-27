@@ -10,6 +10,7 @@ green CI run and only surface after upload.
 from __future__ import annotations
 
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,54 @@ def _venv_python(root: Path) -> Path:
 def _last_line(text: str) -> str:
     lines = [line for line in text.strip().splitlines() if line.strip()]
     return lines[-1] if lines else ""
+
+
+def _find_uv() -> str | None:
+    """Path to the uv executable, if it is installed."""
+    return shutil.which("uv")
+
+
+def _create_env(
+    env_dir: Path, wheel: Path, uv: str | None
+) -> tuple[Path, subprocess.CompletedProcess]:
+    """Create a clean environment and install `wheel` into it.
+
+    uv creates environments several times faster than the stdlib `venv`
+    module, so it is used when present. The checks that follow are identical
+    either way: only the setup speed differs.
+
+    A uv environment ships no pip, so installation goes through
+    `uv pip install --python`. If uv cannot create the environment at all we
+    fall back to the stdlib rather than failing, since that is uv's problem
+    and not the wheel's. An install failure is reported as-is, because that
+    one really is about the wheel.
+    """
+    if uv is not None:
+        try:
+            created = subprocess.run(
+                [uv, "venv", str(env_dir)], capture_output=True, text=True
+            )
+        except OSError:
+            # uv vanished between detection and use, or cannot be executed.
+            created = None
+        if created is not None and created.returncode == 0:
+            py = _venv_python(env_dir)
+            install = subprocess.run(
+                [uv, "pip", "install", "--quiet", "--python", str(py), str(wheel)],
+                capture_output=True,
+                text=True,
+            )
+            return py, install
+        # uv is present but unusable here; fall through to the stdlib.
+
+    venv.create(env_dir, with_pip=True)
+    py = _venv_python(env_dir)
+    install = subprocess.run(
+        [str(py), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", str(wheel)],
+        capture_output=True,
+        text=True,
+    )
+    return py, install
 
 
 def _check_imports(py: Path, cwd: Path, imports: list[str]) -> list[Result]:
@@ -110,6 +159,7 @@ def run_checks(
     imports: list[str] | None = None,
     commands: list[str] | None = None,
     files: list[str] | None = None,
+    use_uv: bool | None = None,
 ) -> list[Result]:
     """Install `wheel` in a throwaway venv and run the configured checks."""
     imports = imports or []
@@ -130,14 +180,8 @@ def run_checks(
         scratch = tmp / "scratch"
         scratch.mkdir()
 
-        venv.create(env_dir, with_pip=True)
-        py = _venv_python(env_dir)
-
-        install = subprocess.run(
-            [str(py), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", str(wheel)],
-            capture_output=True,
-            text=True,
-        )
+        uv = None if use_uv is False else _find_uv()
+        py, install = _create_env(env_dir, wheel, uv)
         if install.returncode != 0:
             results.append(Result("install", False, _last_line(install.stderr)))
             return results
