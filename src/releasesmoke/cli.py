@@ -46,6 +46,11 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("pyproject.toml"),
         help="pyproject.toml holding [tool.releasesmoke] (default: ./pyproject.toml)",
     )
+    parser.add_argument(
+        "--no-uv",
+        action="store_true",
+        help="always use the stdlib venv module, even if uv is installed",
+    )
     args = parser.parse_args(argv)
 
     if not args.wheel.exists():
@@ -65,7 +70,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(f"Checking {args.wheel.name}")
-    results = run_checks(args.wheel, imports=imports, commands=commands, files=files)
+    results = run_checks(
+        args.wheel,
+        imports=imports,
+        commands=commands,
+        files=files,
+        use_uv=not args.no_uv,
+    )
     failed = report(results)
 
     print()
