@@ -1,6 +1,6 @@
 # releasesmoke
 
-**Status: early development. Nothing here works yet — see [Roadmap](#roadmap).**
+**Status: early development. The three checks below work; not yet on PyPI — install from source. See [Roadmap](#roadmap).**
 
 Your tests pass. Your wheel builds. You publish. An hour later someone opens an issue:
 
@@ -12,7 +12,7 @@ The module is right there in your source tree. It just isn't in the wheel.
 
 This is the gap `releasesmoke` is meant to close: **your test suite runs against your source tree, not against the artifact your users install.** Packaging bugs slip through every green CI run, because CI never installs the thing it just built.
 
-## What it will do
+## What it does
 
 Before you publish, `releasesmoke` installs your built wheel into a clean virtual environment — no source directory on the path, no dev dependencies — and checks that it actually works:
 
@@ -32,27 +32,52 @@ There are good tools in this space and you may already want them:
 
 `releasesmoke` is narrower on purpose: a pure-Python project, one config block, one command, one readable failure report. If you need a build matrix across 30 targets, use `cibuildwheel`.
 
-## Planned usage
+## Usage
+
+Install from source (there is no PyPI release yet):
+
+```bash
+pip install git+https://github.com/sathyadev-ui/releasesmoke
+```
+
+Configure the checks in your `pyproject.toml`:
 
 ```toml
-# pyproject.toml
 [tool.releasesmoke]
 imports = ["myproject", "myproject.cli"]
 commands = ["mytool --help"]
 files = ["myproject/templates/base.html"]
 ```
 
+Then build and check:
+
 ```bash
 python -m build
 releasesmoke dist/myproject-1.2.0-py3-none-any.whl
 ```
 
+It exits non-zero when a check fails, so it stops a release in CI:
+
+```
+  PASS  install
+  PASS  import myproject
+  FAIL  import myproject.templates
+        ModuleNotFoundError: No module named 'myproject.templates'
+
+1 check(s) failed - do not publish this wheel.
+```
+
+If [uv](https://github.com/astral-sh/uv) is installed it is used to build the
+throwaway environment, which takes a run from roughly 4 seconds to under half a
+second. Nothing needs configuring, and the checks are identical either way.
+Pass `--no-uv` to force the stdlib `venv` module.
+
 ## Roadmap
 
-- [ ] Clean-venv install and import checks
-- [ ] Console-script checks
-- [ ] Package-data checks
-- [ ] GitHub Actions example workflow
+- [x] Clean-venv install and import checks
+- [x] Console-script checks
+- [x] Package-data checks
+- [ ] GitHub Actions example workflow others can copy
 - [ ] First release on PyPI
 
 ## Contributing
