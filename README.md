@@ -82,7 +82,7 @@ Pass `--no-uv` to force the stdlib `venv` module.
 
 ## Contributing
 
-Issues and ideas are welcome, particularly from maintainers who have shipped a broken release and remember how it happened. If you have a packaging failure that a tool like this would have caught, open an issue describing it — real failure cases shape what gets built first.
+Issues and ideas are welcome, particularly from maintainers who have shipped a broken release and remember how it happened. If you have a packaging failure that a tool like this would have caught, open an issue describing it  - real failure cases shape what gets built first.
 
 ## License
 
